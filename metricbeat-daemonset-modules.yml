@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: metricbeat-daemonset-modules
+  namespace: kube-system
+  labels:
+    k8s-app: metricbeat
+data:
+  system.yml: |-
+    - module: system
+      enabled: true
+      period: 10s
+      metricsets:
+        - cpu
+        - load
+        - memory
+        - network
+        - process
+        - process_summary
+        - core
+        - diskio
+        - socket
+      processes: ['.*']
+      process.include_top_n:
+        by_cpu: 5      # include top 5 processes by CPU
+        by_memory: 5   # include top 5 processes by memory
+
+    - module: system
+      enabled: true
+      period: 1m
+      metricsets:
+        - filesystem
+        - fsstat
+      processors:
+      - drop_event.when.regexp:
+          system.filesystem.mount_point: '^/(sys|cgroup|proc|dev|etc|host|lib)($|/)'
+  kubernetes.yml: |-
+    - module: kubernetes
+      enabled: true
+      metricsets:
+        - node
+        - system
+        - pod
+        - container
+        - volume
+      period: 10s
+      host: ${NODE_NAME}
+      hosts: ["https://${NODE_NAME}:10250"]
+      #bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+      ssl.verification_mode: "none"
+    - module: kubernetes
+      enabled: true
+      metricsets:
+        - apiserver
+      hosts: ["https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}"]
+    - module: kubernetes
+      enabled: true
+      metricsets:
+        - proxy
+      hosts: ["localhost:10249"]
+      period: 10s
+#
+#      "Note: In some "As a Service" Kubernetes implementations, like GKE, the master nodes
+#       or even the pods running on the masters won’t be visible. In these cases it won’t be 
+#       possible to use scheduler and controllermanager metricsets."
+#       See metricbeat documentation for possible work-around and what ports to be used for https traffic.
+#
+#    - module: kubernetes
+#      enabled: true
+#      metricsets:
+#        - controllermanager
+#      hosts: ["http://localhost:10252"]
+#      period: 10s
+#    - module: kubernetes
+#      enabled: true
+#      metricsets:
+#        - scheduler
+#      hosts: ["localhost:10251"]
+#      period: 10s
+  docker.yml: |-
+    - module: docker
+      metricsets:
+        - "container"
+        - "cpu"
+        - "diskio"
+        - "event"
+        - "healthcheck"
+        - "info"
+        - "image"
+        - "memory"
+        - "network"
+      hosts: ["unix:///var/run/docker.sock"]
+      period: 10s
+      enabled: true
