@@ -11,29 +11,23 @@ data:
       # Mounted `metricbeat-daemonset-modules` configmap:
       path: ${path.config}/modules.d/*.yml
       # Reload module configs as they change:
-      reload.enabled: false
-
-    setup.template.settings:
-      index.number_of_shards: 1
-      index.number_of_replicas: 0
-      index.codec: best_compression
-
-    setup.template.name: "metricbeat"
-    setup.template.pattern: "metricbeat-*"
+      reload.enabled: true
 
     path.home: /usr/share/metricbeat
     path.bin: /usr/share/metricbeat
     path.config: /usr/share/metricbeat
     path.data: /usr/share/metricbeat/data
-    path.logs: /usr/share/metricbeat/logs
-
-    setup.dashboards.enabled: true
-    setup.dashboards.index: "metricbeat-*"
-    setup.dashboards.directory: /usr/share/metricbeat/kibana/
+    #path.logs: /usr/share/metricbeat/logs
 
     setup.kibana:
       host: "${KIBANA_ADDRESS}:${KIBANA_PORT}"
       ssl.verification_mode: none
+      username: ${ELASTICSEARCH_USERNAME}
+      password: ${ELASTICSEARCH_PASSWORD}
+
+    #setup.dashboards.enabled: true
+    #setup.dashboards.index: "metricbeat-*"
+    #setup.dashboards.directory: /usr/share/metricbeat/kibana/
 
 
     output.elasticsearch:
@@ -41,10 +35,16 @@ data:
       username: "${ELASTICSEARCH_USERNAME}"
       password: "${ELASTICSEARCH_PASSWORD}"
       index: "metricbeat"
+      enabled: false
 
     processors:
       - add_cloud_metadata:
+      - drop_fields:
+          fields: ['aws.tags.*']
       - add_fields:
           labels:
             squad: ${SQUAD_ID}
             env: ${ENV_ID}
+
+    output.logstash:
+      hosts: [${LOGSTASH_IP}]
