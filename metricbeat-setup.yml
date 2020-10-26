@@ -1,0 +1,42 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: metricbeat-setup
+  namespace: kube-system
+spec:
+  activeDeadlineSeconds: 300
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: metricbeat-setup
+          #imagePullPolicy: Always
+          image: docker.elastic.co/beats/metricbeat:7.9.3
+          args: ["-c", "/etc/metricbeat.yml", "-e", "setup", "--dashboards"]
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: ELASTICSEARCH_PASSWORD
+              value: <insert es_pw>
+            - name: ELASTICSEARCH_USERNAME
+              value: <insert es_uname>
+          securityContext:
+            runAsUser: 0
+          volumeMounts:
+            - name: config
+              mountPath: /etc/metricbeat.yml
+              readOnly: true
+              subPath: metricbeat.yml
+            - name: dockersock
+              mountPath: /var/run/docker.sock
+      volumes:
+        - name: dockersock
+          hostPath:
+            path: /var/run/docker.sock
+        - name: config
+          configMap:
+            defaultMode: 0600
+            name: metricbeat-setup-config
+            
